@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serial Communication</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Serial Communication with COM Port</h1>
+    <button id="connectButton">Connect to COM Port</button>
+    <p id="status">Status: Disconnected</p>
+
+    <div>
+        <button class="sendButton" data-value="w">Send "w"</button>
+        <button class="sendButton" data-value="a">Send "a"</button>
+        <button class="sendButton" data-value="s">Send "s"</button>
+        <button class="sendButton" data-value="d">Send "d"</button>
+    </div>
+
+    <script>
+        let port;
+        let sendingInterval; // Interval for continuous sending
+        let defaultSendingInterval; // Interval for sending default "n"
+        let currentKeyData; // Data to send based on button pressed
+
+        document.getElementById('connectButton').addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                document.getElementById('status').textContent = 'Connected to the COM port!';
+
+                // Start sending default "n" when connected
+                startDefaultSending();
+
+                // Add event listeners for button presses
+                document.querySelectorAll('.sendButton').forEach(button => {
+                    button.addEventListener('mousedown', startSendingKey);
+                    button.addEventListener('mouseup', stopSendingKey);
+                    button.addEventListener('mouseleave', stopSendingKey); // Stop sending if mouse leaves the button
+                });
+
+            } catch (error) {
+                console.error('Error connecting to the serial port:', error);
+                document.getElementById('status').textContent = 'Failed to connect to the COM port.';
+            }
+        });
+
+        function startSendingKey(event) {
+            if (!port) return; // If not connected, do nothing
+            if (sendingInterval) return; // If already sending, do nothing
+
+            // Stop sending default "n" when a button is pressed
+            stopDefaultSending();
+
+            // Set current key data based on button pressed
+            currentKeyData = event.target.getAttribute('data-value');
+
+            sendingInterval = setInterval(async () => {
+                const encoder = new TextEncoder();
+                const writer = port.writable.getWriter();
+
+                // Send the character while the button is pressed
+                try {
+                    await writer.write(encoder.encode(currentKeyData + '\n'));
+                    document.getElementById('status').textContent = `Sent: "${currentKeyData}"`;
+                } catch (error) {
+                    console.error('Error writing to serial port:', error);
+                    document.getElementById('status').textContent = 'Failed to send data.';
+                } finally {
+                    writer.releaseLock(); // Release the lock after writing
+                }
+            }, 100); // Send every 100 milliseconds
+        }
+
+        function stopSendingKey(event) {
+            // Clear sending interval if it's active
+            if (sendingInterval) {
+                clearInterval(sendingInterval); // Stop the sending interval
+                sendingInterval = null; // Reset the interval
+                currentKeyData = null; // Reset currentKeyData
+                document.getElementById('status').textContent = 'Stopped sending data.';
+            }
+
+            // Restart sending default "n" when no button is pressed
+            startDefaultSending();
+        }
+
+        function startDefaultSending() {
+            if (!port) return; // If not connected, do nothing
+            if (defaultSendingInterval) return; // If already sending "n", do nothing
+
+            defaultSendingInterval = setInterval(async () => {
+                const encoder = new TextEncoder();
+                const writer = port.writable.getWriter();
+
+                try {
+                    await writer.write(encoder.encode('m\n'));
+                    document.getElementById('status').textContent = 'Sent default: "n"';
+                } catch (error) {
+                    console.error('Error writing default data to serial port:', error);
+                } finally {
+                    writer.releaseLock(); // Release the lock after writing
+                }
+            }, 10); // Send "n" every second
+        }
+
+        function stopDefaultSending() {
+            if (defaultSendingInterval) {
+                clearInterval(defaultSendingInterval); // Stop sending "n"
+                defaultSendingInterval = null; // Reset the interval
+            }
+        }
+    </script>
+
+</body>
+</html>
