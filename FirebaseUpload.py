@@ -5,7 +5,8 @@ from firebase_admin import credentials , storage
 from datetime import datetime
 import os
 
-Time_Interval = 10 #Change the Interval as per your need
+
+Time_Interval = 5 #Change the Interval as per your need
 
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate(r"C:\Users\DELL\Desktop\CN_PROJECT\computernetowrk-d0548-firebase-adminsdk-gedtp-dd07cd9ec2.json")
@@ -15,8 +16,9 @@ firebase_admin.initialize_app(cred, {
 })
 
 def upload_snapshot():
+
     cap = cv2.VideoCapture(0)
-    ret , frame = cap.read()
+    ret, frame = cap.read()
     filename = f"snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
     cv2.imwrite(filename , frame)
 
